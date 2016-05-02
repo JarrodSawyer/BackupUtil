@@ -73,30 +73,28 @@ int handleNewClientConnection(void *pContext, int clientFd)
 {
   ClientMessagingContext *pMessaging = 
     (ClientMessagingContext *) pContext;
-  printf("Line: %d\n", __LINE__);
+
   if(pMessaging != NULL)
   {
-printf("Line: %d\n", __LINE__);
+
     if(pMessaging->numConnectedClients >= MAX_CLIENT_CONNECTIONS)
     {
       return(MAX_CLIENTS_CONNECTED_ERR);
     }
-    printf("Line: %d %d\n", __LINE__, pMessaging->numConnectedClients);
+
     // Allocate client connection structure
     if(pMessaging->clientConnections[pMessaging->numConnectedClients] == NULL)
     {
-printf("Line: %d\n", __LINE__);
+
       pMessaging->clientConnections[pMessaging->numConnectedClients] =
 	(ClientConnectionInformation *) malloc(sizeof(ClientConnectionInformation));
- printf("Line: %d\n", __LINE__);
  
       if(pMessaging->clientConnections[pMessaging->numConnectedClients] == NULL)
       {
 	return(ALLOCATION_ERR);
       }
     }
- printf("Line: %d\n", __LINE__);
-  
+   
     pMessaging->clientConnections[pMessaging->numConnectedClients]->clientFd = clientFd;
 
     pMessaging->numConnectedClients++;

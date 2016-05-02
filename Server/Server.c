@@ -112,32 +112,32 @@ int serverHandleClientConnection(ServerInformation *pServerInfo)
   unsigned int clilen = 0;
   int newSockFd = -1;
   int retVal = SUCCESS;
-  printf("Line: %d\n", __LINE__);
+
   if(pServerInfo != NULL)
   {
     clilen = sizeof(cli_addr);
-printf("Line: %d\n", __LINE__);
+
     newSockFd = accept(pServerInfo->serverSocket, (struct sockaddr *) &cli_addr, &clilen);
     if (newSockFd < 0) 
     {
       return(SOCKET_ACCEPT_ERR);
     }
-printf("Line: %d\n", __LINE__);
+
     retVal = handleNewClientConnection(pServerInfo->pClientMessaging, newSockFd);
     if(retVal != SUCCESS)
     {
       return(retVal);
     }
-printf("Line: %d\n", __LINE__);
+
     /* Create client connection thread */
     retVal = pthread_create(&pServerInfo->threadIds[pServerInfo->numThreads], NULL, &clientProcessingThread, NULL);
     if(retVal != 0)
     {
       return(THREAD_CREATION_ERR);
     }
-printf("Line: %d\n", __LINE__);
+
     pServerInfo->numThreads++;
-printf("Line: %d\n", __LINE__);
+
     return(SUCCESS);
   }
 
