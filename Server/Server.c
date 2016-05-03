@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include "Error.h"
+#include "Debug.h"
 #include "ClientMessageHandling.h"
 #include "ClientProcessingThread.h"
 
@@ -44,8 +45,6 @@ typedef struct
 
 int initializeServerInformation(ServerInformation *pServerInfo)
 {
-  int retVal = SUCCESS;
-
   if(pServerInfo != NULL)
   {
     pServerInfo->pClientMessaging = NULL;
@@ -53,6 +52,7 @@ int initializeServerInformation(ServerInformation *pServerInfo)
     pServerInfo->pClientMessaging = initializeClientMessaging();
     if(pServerInfo->pClientMessaging == NULL)
     {
+      ERROR(ALLOCATION_ERR, "Error in initializeClientMessaging()");
       return(ALLOCATION_ERR);
     }
     
@@ -66,6 +66,7 @@ int initializeServerInformation(ServerInformation *pServerInfo)
     return(SUCCESS);
   }
   
+  ERROR(NULL_POINTER, "Function received NULL ServerInformation pointer.");
   return(NULL_POINTER);
 }
 
@@ -79,6 +80,7 @@ int initializeServerSocket(ServerInformation *pServerInfo)
     pServerInfo->serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (pServerInfo->serverSocket < 0) 
     {
+      ERROR(SOCKET_CREATION_ERR, "Error creating server socket.");
       return(SOCKET_CREATION_ERR);
     }
 
@@ -92,17 +94,21 @@ int initializeServerSocket(ServerInformation *pServerInfo)
     // Now bind the host address
     if (bind(pServerInfo->serverSocket, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) 
     {
+      ERROR(SOCKET_BIND_ERR, "Find to bind server socket. Port: %u ADDR: %ul",
+	    pServerInfo->portNum, serv_addr.sin_addr.s_addr);
       return(SOCKET_BIND_ERR);
     }
     
     if(listen(pServerInfo->serverSocket, SERVER_LISTEN_BACKLOG) < 0)
     {
+      ERROR(SOCKET_LISTEN_ERR, "Listen call on server socket failed.");
       return(SOCKET_LISTEN_ERR);
     }
 
     return(SUCCESS);
   }
 
+  ERROR(NULL_POINTER, "Function received NULL ServerInformation pointer.");
   return(NULL_POINTER);
 }
 
@@ -120,12 +126,14 @@ int serverHandleClientConnection(ServerInformation *pServerInfo)
     newSockFd = accept(pServerInfo->serverSocket, (struct sockaddr *) &cli_addr, &clilen);
     if (newSockFd < 0) 
     {
+      ERROR(SOCKET_ACCEPT_ERR, "Error on serverSocket accept call.");
       return(SOCKET_ACCEPT_ERR);
     }
 
     retVal = handleNewClientConnection(pServerInfo->pClientMessaging, newSockFd);
     if(retVal != SUCCESS)
     {
+      ERROR(retVal, "handleNewClientConnection call failed.");
       return(retVal);
     }
 
@@ -133,6 +141,8 @@ int serverHandleClientConnection(ServerInformation *pServerInfo)
     retVal = pthread_create(&pServerInfo->threadIds[pServerInfo->numThreads], NULL, &clientProcessingThread, NULL);
     if(retVal != 0)
     {
+      ERROR(THREAD_CREATION_ERR, "Failed to create client thread number: %d.",
+	    pServerInfo->numThreads);
       return(THREAD_CREATION_ERR);
     }
 
@@ -141,6 +151,7 @@ int serverHandleClientConnection(ServerInformation *pServerInfo)
     return(SUCCESS);
   }
 
+  ERROR(NULL_POINTER, "Function received NULL ServerInformation pointer.");
   return(NULL_POINTER);
 }
 
@@ -158,6 +169,7 @@ int serverCleanup(ServerInformation *pServerInfo)
     return(SUCCESS);
   }
 
+  ERROR(NULL_POINTER, "Function received NULL ServerInformation pointer.");
   return(NULL_POINTER);
 }
 
@@ -203,14 +215,14 @@ int main(int argc, char *argv[])
   retVal = initializeServerInformation(&serverInfo);
   if(retVal != SUCCESS)
   {
-    fprintf(stderr, "Error initializing server information. Error code: %d\n", retVal);
+    ERROR(retVal, "Error initializing server information.");
     exit(1);
   }
 
   retVal = parseArguments(argc, argv, &serverInfo);
   if(retVal != SUCCESS)
   {
-    fprintf(stderr, "Error parsing arguments. Error Code: %d\n", retVal);
+    ERROR(retVal, "Error parsing arguments.");
     printUsage();
     exit(1);
   }
@@ -218,7 +230,7 @@ int main(int argc, char *argv[])
   retVal = initializeServerSocket(&serverInfo);
   if(retVal != SUCCESS)
   {
-    fprintf(stderr, "Error initializing server socket. ErrorCode: %d\n", retVal);
+    ERROR(retVal, "Error initializing server socket.");
     serverCleanup(&serverInfo);
     exit(1);
   }
@@ -237,11 +249,11 @@ int main(int argc, char *argv[])
     retVal = select(serverInfo.maxFd+1, &serverInfo.readFds, NULL, NULL, NULL);
     if(retVal < 0)
     {
-      fprintf(stderr, "Error on select. Errno: %d\n", errno);
+      ERROR(FAILURE, "Error on select.");
     }
     else if(retVal == 0) // Select timeout. Nothing to read 
     {
-      printf("Select timeout\n");
+      INFO("Select timeout.");
     }
     else
     {
@@ -250,7 +262,7 @@ int main(int argc, char *argv[])
 	retVal = serverHandleClientConnection(&serverInfo);
 	if(retVal != SUCCESS)
 	{
-	  fprintf(stderr, "Error handling client connection. Error Code: %d\n", retVal);
+	  ERROR(retVal, "Error handling client connection.");
 	}
       }
     }  

@@ -1,6 +1,8 @@
 #ifndef ERROR_H
 #define ERROR_H
 
+#include "Debug.h"
+
 enum ServerErrors 
 {
   //Generic Errors

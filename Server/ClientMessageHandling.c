@@ -45,6 +45,7 @@ int cleanupClientMessaging(void *pContext)
     return(SUCCESS);
   }
 
+  ERROR(NULL_POINTER, "Cleanup function receoved null context pointer");
   return(NULL_POINTER);
 }
 
@@ -56,6 +57,7 @@ void* initializeClientMessaging()
   pMessagingContext = (ClientMessagingContext *) malloc(sizeof(ClientMessagingContext));
   if(pMessagingContext == NULL)
   {
+    ERROR(ALLOCATION_ERR, "Failed to allocate the Client Messaging Context.");
     return(NULL);
   }
     
@@ -79,6 +81,8 @@ int handleNewClientConnection(void *pContext, int clientFd)
 
     if(pMessaging->numConnectedClients >= MAX_CLIENT_CONNECTIONS)
     {
+      ERROR(MAX_CLIENTS_CONNECTED_ERR, "Maximum number of clients reached: %d.", 
+	    pMessaging->numConnectedClients);
       return(MAX_CLIENTS_CONNECTED_ERR);
     }
 
@@ -91,6 +95,8 @@ int handleNewClientConnection(void *pContext, int clientFd)
  
       if(pMessaging->clientConnections[pMessaging->numConnectedClients] == NULL)
       {
+	ERROR(ALLOCATION_ERR, "Failed to allocate client connection information structure. Client number %d", 
+	      pMessaging->numConnectedClients);
 	return(ALLOCATION_ERR);
       }
     }
@@ -102,5 +108,6 @@ int handleNewClientConnection(void *pContext, int clientFd)
     return(SUCCESS);
   }
   
+  ERROR(NULL_POINTER, "Context pointer is NULL.");
   return(NULL_POINTER);
 }

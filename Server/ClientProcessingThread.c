@@ -9,11 +9,11 @@
 void *clientProcessingThread(void *pClientInformation)
 {
   
-  printf("Thread created\n");
+  debug("Thread created.");
 
   sleep(3);
   
-  printf("Thread Exiting\n");
+  debug("Thread Exiting.");
 
   pthread_exit(NULL);
 }
