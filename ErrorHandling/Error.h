@@ -6,8 +6,8 @@
 enum ServerErrors 
 {
   //Generic Errors
+  FAILURE = -1,
   SUCCESS = 0,
-  FAILURE,
   ALLOCATION_ERR,
   NULL_POINTER,
   THREAD_CREATION_ERR,
@@ -17,9 +17,14 @@ enum ServerErrors
   SOCKET_BIND_ERR,
   SOCKET_LISTEN_ERR,
   SOCKET_ACCEPT_ERR,
+  SOCKET_OPT_SET_ERR,
+  INVALID_SOCKET_ERR,
   
   // Client Messaging Errors
   MAX_CLIENTS_CONNECTED_ERR = 20,
+  INVALID_BUFFER_SIZE,
+  INVALID_MSG_SIZE,
+  INVALID_MSG_ID
 };
 
 #endif
