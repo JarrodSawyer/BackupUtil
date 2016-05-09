@@ -73,6 +73,7 @@ int initializeServerInformation(ServerInformation *pServerInfo)
 int initializeServerSocket(ServerInformation *pServerInfo)
 {
   struct sockaddr_in serv_addr;
+  int option = 1;
 
   if(pServerInfo != NULL)
   {
@@ -82,6 +83,12 @@ int initializeServerSocket(ServerInformation *pServerInfo)
     {
       ERROR(SOCKET_CREATION_ERR, "Error creating server socket.");
       return(SOCKET_CREATION_ERR);
+    }
+
+    if(setsockopt(pServerInfo->serverSocket, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option)) < 0)
+    {
+      ERROR(SOCKET_OPT_SET_ERR, "Error setting socket option to SO_REUSEADDR.");
+      return(SOCKET_OPT_SET_ERR);
     }
 
     // Initialize socket structure
@@ -94,11 +101,11 @@ int initializeServerSocket(ServerInformation *pServerInfo)
     // Now bind the host address
     if (bind(pServerInfo->serverSocket, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) 
     {
-      ERROR(SOCKET_BIND_ERR, "Find to bind server socket. Port: %u ADDR: %ul",
+      ERROR(SOCKET_BIND_ERR, "Find to bind server socket. Port: %u ADDR: %u",
 	    pServerInfo->portNum, serv_addr.sin_addr.s_addr);
       return(SOCKET_BIND_ERR);
-    }
-    
+    } 
+
     if(listen(pServerInfo->serverSocket, SERVER_LISTEN_BACKLOG) < 0)
     {
       ERROR(SOCKET_LISTEN_ERR, "Listen call on server socket failed.");
@@ -116,6 +123,7 @@ int serverHandleClientConnection(ServerInformation *pServerInfo)
 {
   struct sockaddr_in cli_addr;
   unsigned int clilen = 0;
+  void *pClientConnectionInfo = NULL;
   int newSockFd = -1;
   int retVal = SUCCESS;
 
@@ -130,15 +138,16 @@ int serverHandleClientConnection(ServerInformation *pServerInfo)
       return(SOCKET_ACCEPT_ERR);
     }
 
-    retVal = handleNewClientConnection(pServerInfo->pClientMessaging, newSockFd);
-    if(retVal != SUCCESS)
+    pClientConnectionInfo = handleNewClientConnection(pServerInfo->pClientMessaging, newSockFd);
+    if(pClientConnectionInfo == NULL)
     {
-      ERROR(retVal, "handleNewClientConnection call failed.");
-      return(retVal);
+      ERROR(ALLOCATION_ERR, "handleNewClientConnection call failed. Client Info Pointer: %p", pClientConnectionInfo);
+      return(ALLOCATION_ERR);
     }
 
     /* Create client connection thread */
-    retVal = pthread_create(&pServerInfo->threadIds[pServerInfo->numThreads], NULL, &clientProcessingThread, NULL);
+    retVal = pthread_create(&pServerInfo->threadIds[pServerInfo->numThreads], NULL, 
+			    &clientProcessingThread, pClientConnectionInfo);
     if(retVal != 0)
     {
       ERROR(THREAD_CREATION_ERR, "Failed to create client thread number: %d.",
