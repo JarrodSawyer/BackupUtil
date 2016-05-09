@@ -2,7 +2,7 @@ CC = gcc
 
 DEBUG_FLAGS = -g -DDEBUG
 
-INC = -I../ErrorHandling
+INC = -I../ErrorHandling -I../Messaging
 OUT_DIR=./bin
 CFLAGS = $(DEBUG_FLAGS) -Wall $(INC)
 
