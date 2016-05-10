@@ -18,6 +18,7 @@ enum ServerErrors
   SOCKET_LISTEN_ERR,
   SOCKET_ACCEPT_ERR,
   SOCKET_OPT_SET_ERR,
+  SOCKET_CONNECT_ERR,
   INVALID_SOCKET_ERR,
   
   // Client Messaging Errors
