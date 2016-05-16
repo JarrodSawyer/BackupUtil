@@ -39,23 +39,12 @@ typedef struct
   //Thread Info
   int numThreads;
   pthread_t threadIds[MAX_NUM_THREADS];
-
-  void *pClientMessaging;
 } ServerInformation;
 
 int initializeServerInformation(ServerInformation *pServerInfo)
 {
   if(pServerInfo != NULL)
   {
-    pServerInfo->pClientMessaging = NULL;
-
-    pServerInfo->pClientMessaging = initializeClientMessaging();
-    if(pServerInfo->pClientMessaging == NULL)
-    {
-      ERROR(ALLOCATION_ERR, "Error in initializeClientMessaging()");
-      return(ALLOCATION_ERR);
-    }
-    
     pServerInfo->serverSocket = -1;
     pServerInfo->maxFd = -1;
     FD_ZERO(&pServerInfo->readFds);
@@ -123,31 +112,31 @@ int serverHandleClientConnection(ServerInformation *pServerInfo)
 {
   struct sockaddr_in cli_addr;
   unsigned int clilen = 0;
-  void *pClientConnectionInfo = NULL;
-  int newSockFd = -1;
+  int *pNewSockFd = NULL;
   int retVal = SUCCESS;
 
   if(pServerInfo != NULL)
   {
+    // Client thread will handle freeing this memory
+    pNewSockFd = (int*) malloc(sizeof(int));
+    if(pNewSockFd == NULL)
+    {
+      ERROR(NULL_POINTER, "Failed to allocate socket pointer.");
+      return(NULL_POINTER);
+    }
+
     clilen = sizeof(cli_addr);
 
-    newSockFd = accept(pServerInfo->serverSocket, (struct sockaddr *) &cli_addr, &clilen);
-    if (newSockFd < 0) 
+    *pNewSockFd = accept(pServerInfo->serverSocket, (struct sockaddr *) &cli_addr, &clilen);
+    if (*pNewSockFd < 0) 
     {
       ERROR(SOCKET_ACCEPT_ERR, "Error on serverSocket accept call.");
       return(SOCKET_ACCEPT_ERR);
     }
 
-    pClientConnectionInfo = handleNewClientConnection(pServerInfo->pClientMessaging, newSockFd);
-    if(pClientConnectionInfo == NULL)
-    {
-      ERROR(ALLOCATION_ERR, "handleNewClientConnection call failed. Client Info Pointer: %p", pClientConnectionInfo);
-      return(ALLOCATION_ERR);
-    }
-
     /* Create client connection thread */
     retVal = pthread_create(&pServerInfo->threadIds[pServerInfo->numThreads], NULL, 
-			    &clientProcessingThread, pClientConnectionInfo);
+			    &clientProcessingThread, (void *) pNewSockFd);
     if(retVal != 0)
     {
       ERROR(THREAD_CREATION_ERR, "Failed to create client thread number: %d.",
@@ -172,8 +161,6 @@ int serverCleanup(ServerInformation *pServerInfo)
     {
       close(pServerInfo->serverSocket);
     }
-
-    cleanupClientMessaging(pServerInfo->pClientMessaging);
 
     return(SUCCESS);
   }

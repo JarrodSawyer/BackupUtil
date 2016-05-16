@@ -11,39 +11,29 @@
 
 typedef struct
 {
-  int clientFd;
+  int* pClientFd;
   Messages clientMsg;
 } ClientConnectionInformation;
 
-typedef struct
-{
-  int numConnectedClients;
-  ClientConnectionInformation *clientConnections[MAX_CLIENT_CONNECTIONS];
-} ClientMessagingContext;
-
 int cleanupClientMessaging(void *pContext)
 {
-  int idx = 0;
-  
   if(pContext != NULL)
   {
-    ClientMessagingContext *pMessaging =
-      (ClientMessagingContext *) pContext;
-
-    for(idx = 0; idx < pMessaging->numConnectedClients; idx++)
+    ClientConnectionInformation *pInfo =
+      (ClientConnectionInformation *) pContext;
+    
+    if(pInfo->pClientFd != NULL)
     {
-      if(pMessaging->clientConnections[idx] != NULL)
+      if(*pInfo->pClientFd >= 0)
       {
-	if(pMessaging->clientConnections[idx]->clientFd >=0)
-	{
-	  close(pMessaging->clientConnections[idx]->clientFd);
-	}
-
-	free(pMessaging->clientConnections[idx]);
+	close(*pInfo->pClientFd);
       }
+
+      free(pInfo->pClientFd);
     }
 
     free(pContext);
+    pContext = NULL;
 
     return(SUCCESS);
   }
@@ -52,73 +42,24 @@ int cleanupClientMessaging(void *pContext)
   return(NULL_POINTER);
 }
 
-void* initializeClientMessaging()
+void * handleNewClientConnection(int *pClientFd)
 {
-  ClientMessagingContext *pMessagingContext = NULL;
-  int idx = 0;
-
-  pMessagingContext = (ClientMessagingContext *) malloc(sizeof(ClientMessagingContext));
-  if(pMessagingContext == NULL)
-  {
-    ERROR(ALLOCATION_ERR, "Failed to allocate the Client Messaging Context.");
-    return(NULL);
-  }
-    
-  pMessagingContext->numConnectedClients = 0;
-  
-  for(idx = 0; idx < MAX_CLIENT_CONNECTIONS; idx++)
-  {
-    pMessagingContext->clientConnections[idx] = NULL;
-  }
-
-  return((void *) pMessagingContext);
-}
-
-void * handleNewClientConnection(void *pContext, int clientFd)
-{
-  ClientMessagingContext *pMessaging = 
-    (ClientMessagingContext *) pContext;
-
   ClientConnectionInformation *pInfo = NULL;
 
-  if(pMessaging != NULL)
-  {
-
-    if(pMessaging->numConnectedClients >= MAX_CLIENT_CONNECTIONS)
-    {
-      ERROR(MAX_CLIENTS_CONNECTED_ERR, "Maximum number of clients reached: %d.", 
-	    pMessaging->numConnectedClients);
-      return(NULL);
-    }
-
-    // Allocate client connection structure
-    if(pMessaging->clientConnections[pMessaging->numConnectedClients] == NULL)
-    {
-
-      pMessaging->clientConnections[pMessaging->numConnectedClients] =
-	(ClientConnectionInformation *) malloc(sizeof(ClientConnectionInformation));
+  pInfo =
+    (ClientConnectionInformation *) malloc(sizeof(ClientConnectionInformation));
  
-      if(pMessaging->clientConnections[pMessaging->numConnectedClients] == NULL)
-      {
-	ERROR(ALLOCATION_ERR, "Failed to allocate client connection information structure. Client number %d", 
-	      pMessaging->numConnectedClients);
-	return(NULL);
-      }
-    }
-
-    pInfo = pMessaging->clientConnections[pMessaging->numConnectedClients];
-
-    memset(pInfo, 0, sizeof(ClientConnectionInformation));
-   
-    pInfo->clientFd = clientFd;
-    
-    pMessaging->numConnectedClients++;
-    
-    return((void *) pInfo);
+  if(pInfo == NULL)
+  {
+    ERROR(ALLOCATION_ERR, "Failed to allocate client connection information structure. Client FD %d", *pClientFd);
+    return(NULL);
   }
   
-  ERROR(NULL_POINTER, "Context pointer is NULL.");
-  return(NULL);
+  memset(pInfo, 0, sizeof(ClientConnectionInformation));
+   
+  pInfo->pClientFd = pClientFd;
+  
+  return((void *) pInfo);
 }
 
 int readData(int fd, void *pBuffer, int sizeToRead)
@@ -165,7 +106,7 @@ int handleTextMessage(void *pContext)
   {
     pMsg = &pClient->clientMsg.textMsg;
 
-    bytesRead = readData(pClient->clientFd, &pMsg->text[0], pMsg->hdr.bytesToFollow);
+    bytesRead = readData(*pClient->pClientFd, &pMsg->text[0], pMsg->hdr.bytesToFollow);
     if(bytesRead != pMsg->hdr.bytesToFollow)
     {
       ERROR(INVALID_MSG_SIZE, "Reading the text message failed. Received: %d Expected: %u", 
@@ -198,7 +139,7 @@ int handleClientMessage(void *pContext)
 
   // Read the header
   msgLength = sizeof(pClient->clientMsg.hdr);
-  bytesRead = readData(pClient->clientFd, pHdr, msgLength);
+  bytesRead = readData(*pClient->pClientFd, pHdr, msgLength);
   if(bytesRead != msgLength)
   {
     ERROR(INVALID_MSG_SIZE, "Reading the header failed. Received: %d Expected: %u", 
@@ -246,13 +187,13 @@ int waitForClientMessages(void *pContext, struct timeval *pTimeout)
     // Clear the fds
     FD_ZERO(&readFds);
     
-    debug("The client fd is %d", pClient->clientFd);
+    debug("The client fd is %d", *pClient->pClientFd);
 
     // Add the client fd to set
-    FD_SET(pClient->clientFd, &readFds);
+    FD_SET(*pClient->pClientFd, &readFds);
 
     // Max Fd
-    maxFd = pClient->clientFd;
+    maxFd = *pClient->pClientFd;
 
     retVal = select(maxFd + 1, &readFds, NULL, NULL, pTimeout);
     if(retVal < 0)
@@ -263,7 +204,7 @@ int waitForClientMessages(void *pContext, struct timeval *pTimeout)
     }
     else
     {
-      if(FD_ISSET(pClient->clientFd, &readFds))
+      if(FD_ISSET(*pClient->pClientFd, &readFds))
       {
 	retVal = handleClientMessage(pClient);
 	if(retVal != SUCCESS)
