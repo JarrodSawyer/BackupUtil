@@ -1,6 +1,11 @@
-node {
+pipeline {
+    agent any
 
-    stage('Build'){
-        sh "make all
+    stages {
+        stage('Build') {
+            steps {
+                sh 'make' 
+            }
+        }
     }
 }
