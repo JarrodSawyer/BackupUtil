@@ -1,11 +1,10 @@
-pipeline {
-    agent any
-
-    stages {
-        stage('Build') {
-            steps {
-                sh('cmake') 
-            }
-        }
-    }
-}
+pipeline { 
+    agent { docker 'gcc:latest' } 
+    
+        stages { 
+            stage('build') { 
+                steps { 
+                    sh 'make --version' 
+                    } }
+               } 
+          }
