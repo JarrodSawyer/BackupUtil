@@ -4,7 +4,7 @@ DEBUG_FLAGS = -g -DDEBUG
 
 INC = -I../ErrorHandling -I../Messaging
 OUT_DIR=./bin
-CFLAGS = $(DEBUG_FLAGS) -Wall $(INC)
+CFLAGS = $(DEBUG_FLAGS) -Wall -pthread $(INC)
 
 src = $(wildcard *.c)
 obj = $(patsubst %.c, $(OUT_DIR)/%.o, $(src))

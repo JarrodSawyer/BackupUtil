@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdint.h>
+#include <arpa/inet.h>
 
 #include "Error.h"
 #include "Messages.h"
